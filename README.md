@@ -1,0 +1,45 @@
+# Math Tutor Desktop (MVP)
+
+A local Python desktop app for math help that can:
+- solve typed math problems,
+- show step-by-step output,
+- provide a hint mode,
+- generate similar practice problems,
+- import math problems from images (OCR),
+- save solved problems into SQLite-backed practice sets,
+- export practice sets to text files for mock tests.
+
+## Tech
+- Python 3.10+
+- Tkinter (built-in)
+- SymPy
+- Pillow
+- pytesseract
+- SQLite (built-in)
+
+## Run
+```bash
+cd "/Users/kyleparker/Documents/New project 2"
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python3 -m app.main
+```
+
+## OCR Setup (Required for Image Import)
+Install the Tesseract binary on your machine:
+
+- macOS (Homebrew): `brew install tesseract`
+- Ubuntu/Debian: `sudo apt install tesseract-ocr`
+
+Then restart the app and use `Import from Image (OCR)`.
+
+## Example Inputs
+- `2*x + 3 = 11`
+- `x^2 - 5*x + 6 = 0`
+- `(3*x + 2) - 4`
+
+## Notes
+- Use `*` for multiplication (`2*x` not `2x`).
+- `^` is accepted for powers in common inputs.
+- Every Solve action stores the result in the local database at `data/math_tutor.db`.

@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from .db import Database
+from .input_parser import normalize_problem_text
 from .math_engine import SolveResult, generate_similar_problems, solve_problem
 from .ocr import extract_problem_from_image
 
@@ -88,16 +89,21 @@ class MathTutorApp(tk.Tk):
     def _get_problem_input(self) -> str:
         return self.problem_entry.get("1.0", tk.END).strip()
 
+    def _get_normalized_problem(self) -> str:
+        raw = self._get_problem_input()
+        return normalize_problem_text(raw)
+
     def _set_problem_input(self, text: str) -> None:
         self.problem_entry.delete("1.0", tk.END)
         self.problem_entry.insert("1.0", text)
 
     def on_solve(self) -> None:
-        problem = self._get_problem_input()
+        problem = self._get_normalized_problem()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
 
+        self._set_problem_input(problem)
         try:
             result = solve_problem(problem)
         except Exception as exc:
@@ -128,10 +134,11 @@ class MathTutorApp(tk.Tk):
         self._write_result("\n".join(lines))
 
     def on_hint(self) -> None:
-        problem = self._get_problem_input()
+        problem = self._get_normalized_problem()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
+        self._set_problem_input(problem)
         try:
             result = solve_problem(problem)
         except Exception as exc:
@@ -140,11 +147,12 @@ class MathTutorApp(tk.Tk):
         self._write_result(f"Problem: {problem}\n\nHint:\n{result.hint}")
 
     def on_generate_similar(self) -> None:
-        problem = self._get_problem_input()
+        problem = self._get_normalized_problem()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
 
+        self._set_problem_input(problem)
         items = generate_similar_problems(problem, count=5)
         self.practice_list.delete(0, tk.END)
         for item in items:

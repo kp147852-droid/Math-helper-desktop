@@ -33,8 +33,8 @@ class MathTutorApp(tk.Tk):
         input_frame = ttk.LabelFrame(root, text="Problem Input", padding=10)
         input_frame.pack(fill="x")
 
-        ttk.Label(input_frame, text="Type a math problem (examples: 2*x + 3 = 11, x^2 - 5*x + 6 = 0, (3*x+2)-4)").pack(anchor="w")
-        self.problem_entry = ttk.Entry(input_frame)
+        ttk.Label(input_frame, text="Type or paste a math problem (examples: 2*x + 3 = 11, x^2 - 5*x + 6 = 0, (3*x+2)-4)").pack(anchor="w")
+        self.problem_entry = tk.Text(input_frame, height=3, wrap="word")
         self.problem_entry.pack(fill="x", pady=(6, 8))
 
         btn_row = ttk.Frame(input_frame)
@@ -42,6 +42,7 @@ class MathTutorApp(tk.Tk):
         ttk.Button(btn_row, text="Solve", command=self.on_solve).pack(side="left")
         ttk.Button(btn_row, text="Hint", command=self.on_hint).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Generate Similar", command=self.on_generate_similar).pack(side="left", padx=(8, 0))
+        ttk.Button(btn_row, text="Paste from Clipboard", command=self.on_paste_clipboard).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Import from Image (OCR)", command=self.on_import_image).pack(side="left", padx=(8, 0))
 
         middle = ttk.Panedwindow(root, orient="horizontal")
@@ -84,8 +85,15 @@ class MathTutorApp(tk.Tk):
         self.result_text.insert(tk.END, content)
         self.result_text.configure(state="disabled")
 
+    def _get_problem_input(self) -> str:
+        return self.problem_entry.get("1.0", tk.END).strip()
+
+    def _set_problem_input(self, text: str) -> None:
+        self.problem_entry.delete("1.0", tk.END)
+        self.problem_entry.insert("1.0", text)
+
     def on_solve(self) -> None:
-        problem = self.problem_entry.get().strip()
+        problem = self._get_problem_input()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
@@ -120,7 +128,7 @@ class MathTutorApp(tk.Tk):
         self._write_result("\n".join(lines))
 
     def on_hint(self) -> None:
-        problem = self.problem_entry.get().strip()
+        problem = self._get_problem_input()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
@@ -132,7 +140,7 @@ class MathTutorApp(tk.Tk):
         self._write_result(f"Problem: {problem}\n\nHint:\n{result.hint}")
 
     def on_generate_similar(self) -> None:
-        problem = self.problem_entry.get().strip()
+        problem = self._get_problem_input()
         if not problem:
             messagebox.showwarning("Missing input", "Please enter a math problem first.")
             return
@@ -156,9 +164,23 @@ class MathTutorApp(tk.Tk):
             messagebox.showerror("OCR error", str(exc))
             return
 
-        self.problem_entry.delete(0, tk.END)
-        self.problem_entry.insert(0, problem)
+        self._set_problem_input(problem)
         self._write_result(f"OCR loaded problem:\n{problem}\n\nClick Solve to generate steps.")
+
+    def on_paste_clipboard(self) -> None:
+        try:
+            pasted = self.clipboard_get()
+        except tk.TclError:
+            messagebox.showwarning("Clipboard", "Clipboard is empty or unavailable.")
+            return
+
+        cleaned = pasted.strip()
+        if not cleaned:
+            messagebox.showwarning("Clipboard", "Clipboard does not contain text.")
+            return
+
+        self._set_problem_input(cleaned)
+        self._write_result("Pasted problem from clipboard.\n\nClick Solve to generate steps.")
 
     def _refresh_sets_dropdown(self) -> None:
         sets = self.db.list_practice_sets()

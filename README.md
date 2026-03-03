@@ -1,73 +1,92 @@
-# Math Tutor Desktop (MVP)
+# Math Helper Desktop
 
-A local Python desktop app for math help that can:
-- solve algebra, precalculus, trigonometry, and core geometry problem types,
-- solve college-level calculus and linear algebra command-style prompts,
-- solve typed math problems,
-- show step-by-step output,
-- provide a hint mode,
-- generate similar practice problems,
-- import math problems from images (OCR),
-- clean pasted homework formatting automatically (like `1) Solve: 2x + 3 = 11`),
-- generate graph answers as image files for functions/equations,
-- save solved problems into SQLite-backed practice sets,
-- run timed practice tests from saved sets with score reporting,
-- generate a new "missed only" review set automatically after timed tests,
-- switch between modern dark and light themes from the header,
-- export practice sets to text files for mock tests.
+A desktop math tutoring app built with Python + Tkinter.
 
-## Tech
+It helps users from school through college by solving problems step-by-step, generating practice, running timed tests, and producing graph answers.
+
+## Highlights
+- Solve algebra, precalculus, trigonometry, geometry, calculus, and linear algebra prompts.
+- Show learning-oriented steps and hints (not just final answers).
+- Paste messy homework text; app normalizes common formats automatically.
+- Generate similar practice problems by topic.
+- Build timed tests from saved sets and auto-create missed-question review sets.
+- Export practice sets for mock tests.
+- Graph equations/functions and save graph images.
+- Light and dark UI themes.
+
+## Tech Stack
 - Python 3.10+
-- Tkinter (built-in)
-- SymPy
-- Pillow
-- pytesseract
-- SQLite (built-in)
+- Tkinter (desktop UI)
+- SymPy (math engine)
+- SQLite (local storage)
+- Optional OCR: Pillow + pytesseract + Tesseract binary
+- Optional graphing: matplotlib + numpy
 
-## Run
+## Quick Start
 ```bash
 cd "/Users/kyleparker/Documents/New project 2"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 -m app.main
+python -m app.main
 ```
 
-Base install (`requirements.txt`) runs the app without OCR support.
-
-## Graph Setup (Required for Graph Answer button)
+## Optional Setup
+### Graph Answer support
 ```bash
 pip install -r requirements-graph.txt
 ```
 
-## OCR Setup (Required for Image Import)
-Install OCR Python deps:
-
+### OCR import support
 ```bash
 pip install -r requirements-ocr.txt
+brew install tesseract
 ```
 
-Install the Tesseract binary on your machine:
-
-- macOS (Homebrew): `brew install tesseract`
-- Ubuntu/Debian: `sudo apt install tesseract-ocr`
-
-Then restart the app and use `Import from Image (OCR)`.
-
 ## Example Inputs
+### Algebra / Precalculus
 - `2*x + 3 = 11`
 - `x^2 - 5*x + 6 = 0`
-- `(3*x + 2) - 4`
+- `analyze (x+1)/(x-2)`
+
+### Trigonometry
+- `sin(x)=1/2`
+- `cos(2*x)=0`
+
+### Geometry
+- `area circle r=5`
+- `perimeter rectangle w=9 h=5`
+- `pythagorean a=5 b=12`
+
+### Calculus
 - `derivative x^3 - 4*x + 7`
 - `integrate sin(x)`
 - `limit x->2 (x^2-4)/(x-2)`
+
+### Linear Algebra
 - `det [[1,2],[3,4]]`
 - `inverse [[2,1],[5,3]]`
 - `solve system 2*x+y=5; x-y=1`
-- `area circle r=5`
-- `analyze (x+1)/(x-2)`
+
+## Project Structure
+- `app/ui.py`: desktop interface and user workflows
+- `app/math_engine.py`: solver/classification logic
+- `app/input_parser.py`: normalization for pasted text
+- `app/graphing.py`: graph generation and save output
+- `app/db.py`: SQLite persistence layer
+- `app/main.py`: app entry point
 
 ## Notes
-- Use `*` for multiplication (`2*x` not `2x`).
-- `^` is accepted for powers in common inputs.
-- Every Solve action stores the result in the local database at `data/math_tutor.db`.
+- Use `*` for multiplication when needed (`2*x`).
+- Superscripts and words like `x²`, `x2`, `x squared` are normalized.
+- Local DB is stored at `data/math_tutor.db`.
+- Graph images are stored under `data/graphs/`.
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Roadmap
+See [ROADMAP.md](ROADMAP.md).
+
+## License
+MIT — see [LICENSE](LICENSE).

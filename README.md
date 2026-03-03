@@ -1,12 +1,14 @@
 # Math Tutor Desktop (MVP)
 
 A local Python desktop app for math help that can:
+- solve algebra, precalculus, trigonometry, and core geometry problem types,
 - solve typed math problems,
 - show step-by-step output,
 - provide a hint mode,
 - generate similar practice problems,
 - import math problems from images (OCR),
 - clean pasted homework formatting automatically (like `1) Solve: 2x + 3 = 11`),
+- generate graph answers as image files for functions/equations,
 - save solved problems into SQLite-backed practice sets,
 - run timed practice tests from saved sets with score reporting,
 - generate a new "missed only" review set automatically after timed tests,
@@ -31,6 +33,11 @@ python3 -m app.main
 ```
 
 Base install (`requirements.txt`) runs the app without OCR support.
+
+## Graph Setup (Required for Graph Answer button)
+```bash
+pip install -r requirements-graph.txt
+```
 
 ## OCR Setup (Required for Image Import)
 Install OCR Python deps:

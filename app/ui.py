@@ -9,6 +9,7 @@ from typing import Callable
 from sympy import SympifyError, simplify, sympify
 
 from .db import Database, SavedSolution
+from .graphing import graph_problem
 from .input_parser import normalize_problem_text
 from .math_engine import SolveResult, generate_similar_problems, solve_problem
 from .ocr import extract_problem_from_image
@@ -335,6 +336,7 @@ class MathTutorApp(tk.Tk):
         ttk.Button(btn_row, text="Solve", style="Primary.TButton", command=self.on_solve).pack(side="left")
         ttk.Button(btn_row, text="Hint", command=self.on_hint).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Generate Similar", command=self.on_generate_similar).pack(side="left", padx=(8, 0))
+        ttk.Button(btn_row, text="Graph Answer", command=self.on_graph_answer).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Paste", command=self.on_paste_clipboard).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Import OCR", command=self.on_import_image).pack(side="left", padx=(8, 0))
 
@@ -472,6 +474,23 @@ class MathTutorApp(tk.Tk):
         self.practice_list.delete(0, tk.END)
         for item in generate_similar_problems(problem, count=5):
             self.practice_list.insert(tk.END, item)
+
+    def on_graph_answer(self) -> None:
+        problem = self._get_normalized_problem()
+        if not problem:
+            messagebox.showwarning("Missing input", "Please enter a math problem first.")
+            return
+
+        self._set_problem_input(problem)
+        output_dir = Path(__file__).resolve().parent.parent / "data" / "graphs"
+        try:
+            graph_path = graph_problem(problem, output_dir)
+        except Exception as exc:
+            messagebox.showerror("Graph error", str(exc))
+            return
+
+        self._write_result(f"Graph generated for:\\n{problem}\\n\\nSaved to:\\n{graph_path}")
+        messagebox.showinfo("Graph Saved", f"Graph image saved to:\\n{graph_path}")
 
     def on_import_image(self) -> None:
         image_path = filedialog.askopenfilename(

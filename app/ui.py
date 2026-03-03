@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
@@ -51,7 +52,7 @@ class PracticeTestWindow(tk.Toplevel):
         set_name: str,
         questions: list[SavedSolution],
         duration_minutes: int,
-        on_finish: Callable[[str], None],
+        on_finish: Callable[[str, list[int]], None],
     ) -> None:
         super().__init__(parent)
         self.title(f"Timed Test - {set_name}")
@@ -70,6 +71,7 @@ class PracticeTestWindow(tk.Toplevel):
         self.correct_count = 0
         self.answered_count = 0
         self.results: list[str] = []
+        self.missed_solution_ids: list[int] = []
         self.finished = False
 
         self.timer_after_id: str | None = None
@@ -143,6 +145,7 @@ class PracticeTestWindow(tk.Toplevel):
             self.correct_count += 1
             self.results.append(f"Q{self.current_index + 1}: Correct")
         else:
+            self.missed_solution_ids.append(q.id)
             self.results.append(
                 f"Q{self.current_index + 1}: Incorrect | Your answer: {user_answer or '[blank]'} | Expected: {q.final_answer}"
             )
@@ -176,7 +179,7 @@ class PracticeTestWindow(tk.Toplevel):
             *self.results,
         ]
         summary = "\n".join(lines)
-        self.on_finish(summary)
+        self.on_finish(summary, self.missed_solution_ids)
         self.destroy()
 
 
@@ -455,9 +458,27 @@ class MathTutorApp(tk.Tk):
 
         set_name = self.db.get_practice_set_name(set_id)
 
-        def handle_finish(summary: str) -> None:
+        def handle_finish(summary: str, missed_solution_ids: list[int]) -> None:
             self._write_result(summary)
-            messagebox.showinfo("Test Complete", "Timed test completed. Score is shown in the Solution panel.")
+            if not missed_solution_ids:
+                messagebox.showinfo("Test Complete", "Timed test completed. No missed questions to review.")
+                return
+
+            create_review = messagebox.askyesno(
+                "Test Complete",
+                "Timed test completed. Create a new practice set with missed questions only?",
+            )
+            if not create_review:
+                return
+
+            stamp = datetime.now().strftime("%Y-%m-%d %H%M%S")
+            review_set_name = f"{set_name} - Missed Review {stamp}"
+            review_set_id = self.db.create_practice_set(review_set_name)
+            for solution_id in missed_solution_ids:
+                self.db.add_solution_to_set(review_set_id, solution_id)
+            self._refresh_sets_dropdown()
+            self.set_choice.set(review_set_name)
+            messagebox.showinfo("Review Set Created", f"Created practice set: {review_set_name}")
 
         PracticeTestWindow(
             parent=self,

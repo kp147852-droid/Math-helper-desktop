@@ -9,6 +9,7 @@ A local Python desktop app for math help that can:
 - clean pasted homework formatting automatically (like `1) Solve: 2x + 3 = 11`),
 - save solved problems into SQLite-backed practice sets,
 - run timed practice tests from saved sets with score reporting,
+- generate a new "missed only" review set automatically after timed tests,
 - export practice sets to text files for mock tests.
 
 ## Tech

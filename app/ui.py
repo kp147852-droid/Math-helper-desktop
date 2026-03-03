@@ -353,7 +353,7 @@ class MathTutorApp(tk.Tk):
 
         self.result_text = tk.Text(result_card, wrap="word")
         self.result_text.pack(fill="both", expand=True)
-        _style_text_widget(self.result_text)
+        _style_text_widget(self.result_text, self.palette)
         self.result_text.configure(state="disabled")
 
         practice_card = ttk.Frame(right, style="Card.TFrame", padding=12)

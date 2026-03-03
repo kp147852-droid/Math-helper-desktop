@@ -23,6 +23,7 @@ python -m app.main
 Run:
 ```bash
 python3 -m py_compile app/main.py app/ui.py app/math_engine.py app/input_parser.py app/db.py app/graphing.py app/ocr.py
+pytest -q
 ```
 
 ## Code Style

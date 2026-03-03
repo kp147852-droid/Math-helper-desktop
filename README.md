@@ -1,24 +1,49 @@
 # Math Helper Desktop
 
-A desktop math tutoring app built with Python + Tkinter.
+[![CI](https://github.com/kp147852-droid/Math-helper-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/kp147852-droid/Math-helper-desktop/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-It helps users from school through college by solving problems step-by-step, generating practice, running timed tests, and producing graph answers.
+Desktop learning software for math from middle school through college-level topics.
 
-## Highlights
-- Solve algebra, precalculus, trigonometry, geometry, calculus, and linear algebra prompts.
-- Show learning-oriented steps and hints (not just final answers).
-- Paste messy homework text; app normalizes common formats automatically.
-- Generate similar practice problems by topic.
-- Build timed tests from saved sets and auto-create missed-question review sets.
-- Export practice sets for mock tests.
-- Graph equations/functions and save graph images.
-- Light and dark UI themes.
+It solves problems step-by-step, generates targeted practice, runs timed assessments, creates missed-question review sets, and supports graph output for visual learning.
+
+## Why This Project Matters
+- Education impact: turns passive answer lookup into active guided practice.
+- Product thinking: combines solve + coach + test + review loop in one local app.
+- Applied AI/analytics pattern: parses noisy user input, classifies intent, and routes to specialized solving workflows.
+
+## Role-Relevant Skills Demonstrated
+### Business Analyst
+- Requirements translation: converted user stories into feature workflows (practice sets, timed tests, missed-question review).
+- Process design: built clear user funnel from problem input to assessment feedback.
+- Documentation: roadmap, changelog, contribution process, security policy.
+
+### Data Scientist / Analytics
+- Problem classification and normalization logic for messy real-world inputs.
+- Deterministic transformation pipeline (OCR/paste normalization to structured expression).
+- Opportunity for instrumentation/metrics (accuracy by topic, missed-topic trends, retention loops).
+
+### AI / Applied ML Engineer
+- Symbolic AI pipeline using SymPy for explainable math reasoning.
+- Hybrid workflows: parser + specialized solver strategies by domain.
+- Human-in-the-loop UX: hint mode, step outputs, and review generation.
+
+## Core Features
+- Algebra, precalculus, trigonometry, geometry, calculus, and linear algebra support.
+- Step-by-step solutions with hint mode.
+- Pasted text cleanup: handles common homework formats, superscripts, fractions, and shorthand.
+- Similar-problem generator by topic.
+- Timed test mode with score summary.
+- Auto-generated "missed only" review sets.
+- Local persistence in SQLite.
+- Graph Answer button to generate PNG visualizations.
+- Light and dark themes.
 
 ## Tech Stack
 - Python 3.10+
 - Tkinter (desktop UI)
 - SymPy (math engine)
-- SQLite (local storage)
+- SQLite (local persistence)
 - Optional OCR: Pillow + pytesseract + Tesseract binary
 - Optional graphing: matplotlib + numpy
 
@@ -31,62 +56,59 @@ pip install -r requirements.txt
 python -m app.main
 ```
 
-## Optional Setup
-### Graph Answer support
+## Optional Dependencies
+### Graphing
 ```bash
 pip install -r requirements-graph.txt
 ```
 
-### OCR import support
+### OCR Import
 ```bash
 pip install -r requirements-ocr.txt
 brew install tesseract
 ```
 
-## Example Inputs
-### Algebra / Precalculus
+## Sample Inputs
 - `2*x + 3 = 11`
-- `x^2 - 5*x + 6 = 0`
-- `analyze (x+1)/(x-2)`
-
-### Trigonometry
 - `sin(x)=1/2`
-- `cos(2*x)=0`
-
-### Geometry
 - `area circle r=5`
-- `perimeter rectangle w=9 h=5`
-- `pythagorean a=5 b=12`
-
-### Calculus
 - `derivative x^3 - 4*x + 7`
 - `integrate sin(x)`
 - `limit x->2 (x^2-4)/(x-2)`
-
-### Linear Algebra
 - `det [[1,2],[3,4]]`
-- `inverse [[2,1],[5,3]]`
 - `solve system 2*x+y=5; x-y=1`
+- `If 2x – 5 = 5x + 4, then x2 + x =`
 
-## Project Structure
+## Architecture
 - `app/ui.py`: desktop interface and user workflows
-- `app/math_engine.py`: solver/classification logic
-- `app/input_parser.py`: normalization for pasted text
-- `app/graphing.py`: graph generation and save output
-- `app/db.py`: SQLite persistence layer
+- `app/input_parser.py`: cleanup/normalization for pasted text
+- `app/math_engine.py`: classification + specialized solve pipelines
+- `app/graphing.py`: graph rendering and image export
+- `app/db.py`: SQLite persistence for problems/solutions/sets
 - `app/main.py`: app entry point
 
-## Notes
-- Use `*` for multiplication when needed (`2*x`).
-- Superscripts and words like `x²`, `x2`, `x squared` are normalized.
-- Local DB is stored at `data/math_tutor.db`.
-- Graph images are stored under `data/graphs/`.
+## Project Docs
+- [Contributing](CONTRIBUTING.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+- [Security Policy](SECURITY.md)
+- [Architecture Notes](docs/ARCHITECTURE.md)
+- [Demo Script](docs/DEMO_SCRIPT.md)
+- [Resume Bullets](docs/RESUME_BULLETS.md)
 
-## Contributing
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Roadmap
-See [ROADMAP.md](ROADMAP.md).
+## Recommended Repo Topics
+Add these topics in GitHub UI for discoverability:
+- `python`
+- `tkinter`
+- `sympy`
+- `education`
+- `edtech`
+- `math`
+- `desktop-app`
+- `sqlite`
+- `ocr`
+- `data-science`
+- `ai`
 
 ## License
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE)

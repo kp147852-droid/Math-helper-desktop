@@ -14,6 +14,16 @@ from .math_engine import SolveResult, generate_similar_problems, solve_problem
 from .ocr import extract_problem_from_image
 
 
+BG = "#0b1220"
+CARD = "#111b2e"
+CARD_ALT = "#13223b"
+TEXT = "#e5e7eb"
+MUTED = "#9aa8bf"
+ACCENT = "#22d3ee"
+ACCENT_ALT = "#38bdf8"
+BORDER = "#1f2a44"
+
+
 def _normalize_answer_tokens(answer: str) -> list[str]:
     cleaned = answer.strip().lower().replace(";", ",")
     if not cleaned:
@@ -45,6 +55,34 @@ def _answers_match(user_answer: str, expected_answer: str) -> bool:
         return False
 
 
+def _style_text_widget(widget: tk.Text, background: str = CARD_ALT) -> None:
+    widget.configure(
+        bg=background,
+        fg=TEXT,
+        insertbackground=ACCENT,
+        selectbackground="#0ea5b7",
+        relief="flat",
+        bd=0,
+        padx=10,
+        pady=8,
+        font=("SF Pro Text", 12),
+    )
+
+
+def _style_listbox(widget: tk.Listbox) -> None:
+    widget.configure(
+        bg=CARD_ALT,
+        fg=TEXT,
+        selectbackground="#0ea5b7",
+        selectforeground="#03111f",
+        relief="flat",
+        bd=0,
+        highlightthickness=1,
+        highlightbackground=BORDER,
+        font=("SF Pro Text", 11),
+    )
+
+
 class PracticeTestWindow(tk.Toplevel):
     def __init__(
         self,
@@ -56,10 +94,11 @@ class PracticeTestWindow(tk.Toplevel):
     ) -> None:
         super().__init__(parent)
         self.title(f"Timed Test - {set_name}")
-        self.geometry("780x420")
+        self.geometry("840x500")
         self.resizable(True, True)
         self.transient(parent)
         self.grab_set()
+        self.configure(bg=BG)
 
         self.set_name = set_name
         self.questions = questions
@@ -73,7 +112,6 @@ class PracticeTestWindow(tk.Toplevel):
         self.results: list[str] = []
         self.missed_solution_ids: list[int] = []
         self.finished = False
-
         self.timer_after_id: str | None = None
 
         self._build_ui()
@@ -82,33 +120,35 @@ class PracticeTestWindow(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._finish_test)
 
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=12)
+        root = ttk.Frame(self, style="App.TFrame", padding=16)
         root.pack(fill="both", expand=True)
 
-        top = ttk.Frame(root)
-        top.pack(fill="x")
-        self.progress_label = ttk.Label(top, text="")
+        header = ttk.Frame(root, style="Card.TFrame", padding=10)
+        header.pack(fill="x")
+        self.progress_label = ttk.Label(header, text="", style="Header.TLabel")
         self.progress_label.pack(side="left")
-        self.timer_label = ttk.Label(top, text="")
+        self.timer_label = ttk.Label(header, text="", style="Timer.TLabel")
         self.timer_label.pack(side="right")
 
-        question_box = ttk.LabelFrame(root, text="Question", padding=10)
-        question_box.pack(fill="both", expand=True, pady=(8, 8))
-        self.question_text = tk.Text(question_box, height=8, wrap="word")
+        question_box = ttk.Frame(root, style="Card.TFrame", padding=12)
+        question_box.pack(fill="both", expand=True, pady=(12, 10))
+        ttk.Label(question_box, text="Question", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
+        self.question_text = tk.Text(question_box, height=9, wrap="word")
         self.question_text.pack(fill="both", expand=True)
+        _style_text_widget(self.question_text)
         self.question_text.configure(state="disabled")
 
-        answer_row = ttk.Frame(root)
-        answer_row.pack(fill="x", pady=(2, 8))
-        ttk.Label(answer_row, text="Your answer:").pack(side="left")
-        self.answer_entry = ttk.Entry(answer_row)
-        self.answer_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
+        answer_box = ttk.Frame(root, style="Card.TFrame", padding=12)
+        answer_box.pack(fill="x")
+        ttk.Label(answer_box, text="Your answer", style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
+        self.answer_entry = ttk.Entry(answer_box, style="App.TEntry")
+        self.answer_entry.pack(fill="x")
 
-        buttons = ttk.Frame(root)
-        buttons.pack(fill="x")
-        ttk.Button(buttons, text="Submit Answer", command=self._submit_answer).pack(side="left")
+        buttons = ttk.Frame(root, style="App.TFrame")
+        buttons.pack(fill="x", pady=(12, 0))
+        ttk.Button(buttons, text="Submit", style="Primary.TButton", command=self._submit_answer).pack(side="left")
         ttk.Button(buttons, text="Skip", command=self._skip_question).pack(side="left", padx=(8, 0))
-        ttk.Button(buttons, text="Finish Test", command=self._finish_test).pack(side="right")
+        ttk.Button(buttons, text="Finish", command=self._finish_test).pack(side="right")
 
     def _write_question(self, text: str) -> None:
         self.question_text.configure(state="normal")
@@ -122,14 +162,14 @@ class PracticeTestWindow(tk.Toplevel):
             return
 
         q = self.questions[self.current_index]
-        self.progress_label.configure(text=f"Question {self.current_index + 1}/{len(self.questions)}")
+        self.progress_label.configure(text=f"{self.set_name}  |  Question {self.current_index + 1}/{len(self.questions)}")
         self.answer_entry.delete(0, tk.END)
-        self._write_question(f"Solve:\n\n{q.problem_text}\n\nType your final answer and click Submit Answer.")
+        self._write_question(f"Solve:\n\n{q.problem_text}\n\nEnter the final answer, then submit.")
         self.answer_entry.focus_set()
 
     def _tick_timer(self) -> None:
         mins, secs = divmod(self.remaining_seconds, 60)
-        self.timer_label.configure(text=f"Time left: {mins:02d}:{secs:02d}")
+        self.timer_label.configure(text=f"{mins:02d}:{secs:02d}")
         if self.remaining_seconds <= 0:
             messagebox.showinfo("Time up", "Time is up. Finishing test.")
             self._finish_test()
@@ -153,8 +193,7 @@ class PracticeTestWindow(tk.Toplevel):
         self._render_question()
 
     def _submit_answer(self) -> None:
-        answer = self.answer_entry.get().strip()
-        self._record_and_next(answer)
+        self._record_and_next(self.answer_entry.get().strip())
 
     def _skip_question(self) -> None:
         self._record_and_next("")
@@ -178,16 +217,19 @@ class PracticeTestWindow(tk.Toplevel):
             "Results:",
             *self.results,
         ]
-        summary = "\n".join(lines)
-        self.on_finish(summary, self.missed_solution_ids)
+        self.on_finish("\n".join(lines), self.missed_solution_ids)
         self.destroy()
 
 
 class MathTutorApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Math Tutor Desktop")
-        self.geometry("980x680")
+        self.title("Math Helper Desktop")
+        self.geometry("1180x760")
+        self.minsize(980, 640)
+        self.configure(bg=BG)
+
+        self._configure_styles()
 
         data_dir = Path(__file__).resolve().parent.parent / "data"
         data_dir.mkdir(exist_ok=True)
@@ -200,59 +242,97 @@ class MathTutorApp(tk.Tk):
         self._refresh_sets_dropdown()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+    def _configure_styles(self) -> None:
+        style = ttk.Style(self)
+        style.theme_use("clam")
+
+        style.configure("App.TFrame", background=BG)
+        style.configure("Card.TFrame", background=CARD, relief="flat")
+        style.configure("Header.TLabel", background=CARD, foreground=TEXT, font=("SF Pro Display", 16, "bold"))
+        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=("SF Pro Display", 20, "bold"))
+        style.configure("Subtitle.TLabel", background=BG, foreground=MUTED, font=("SF Pro Text", 11))
+        style.configure("Section.TLabel", background=CARD, foreground=TEXT, font=("SF Pro Display", 13, "bold"))
+        style.configure("Muted.TLabel", background=CARD, foreground=MUTED, font=("SF Pro Text", 10))
+        style.configure("Timer.TLabel", background=CARD, foreground=ACCENT, font=("SF Pro Display", 18, "bold"))
+
+        style.configure("Primary.TButton", background=ACCENT, foreground="#03111f", borderwidth=0, padding=(14, 8), font=("SF Pro Text", 11, "bold"))
+        style.map("Primary.TButton", background=[("active", ACCENT_ALT)])
+        style.configure("TButton", background="#1c2a45", foreground=TEXT, borderwidth=0, padding=(12, 8), font=("SF Pro Text", 10, "bold"))
+        style.map("TButton", background=[("active", "#243557")])
+
+        style.configure("App.TEntry", fieldbackground=CARD_ALT, foreground=TEXT, bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, insertcolor=ACCENT, padding=8)
+        style.configure("TCombobox", fieldbackground=CARD_ALT, foreground=TEXT, background="#1c2a45", bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, arrowsize=14)
+
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=12)
+        root = ttk.Frame(self, style="App.TFrame", padding=16)
         root.pack(fill="both", expand=True)
 
-        input_frame = ttk.LabelFrame(root, text="Problem Input", padding=10)
-        input_frame.pack(fill="x")
+        header = ttk.Frame(root, style="App.TFrame")
+        header.pack(fill="x", pady=(0, 10))
+        ttk.Label(header, text="Math Helper", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(header, text="Solve, practice, and test with step-by-step math guidance", style="Subtitle.TLabel").pack(anchor="w")
 
-        ttk.Label(input_frame, text="Type or paste a math problem (examples: 2*x + 3 = 11, x^2 - 5*x + 6 = 0, (3*x+2)-4)").pack(anchor="w")
-        self.problem_entry = tk.Text(input_frame, height=3, wrap="word")
-        self.problem_entry.pack(fill="x", pady=(6, 8))
+        input_card = ttk.Frame(root, style="Card.TFrame", padding=12)
+        input_card.pack(fill="x")
+        ttk.Label(input_card, text="Problem Workspace", style="Section.TLabel").pack(anchor="w")
+        ttk.Label(
+            input_card,
+            text="Type or paste a problem. Formats like '1) Solve: 2x + 3 = 11' are auto-cleaned.",
+            style="Muted.TLabel",
+        ).pack(anchor="w", pady=(2, 8))
 
-        btn_row = ttk.Frame(input_frame)
-        btn_row.pack(fill="x")
-        ttk.Button(btn_row, text="Solve", command=self.on_solve).pack(side="left")
+        self.problem_entry = tk.Text(input_card, height=4, wrap="word")
+        self.problem_entry.pack(fill="x")
+        _style_text_widget(self.problem_entry)
+
+        btn_row = ttk.Frame(input_card, style="Card.TFrame")
+        btn_row.pack(fill="x", pady=(10, 0))
+        ttk.Button(btn_row, text="Solve", style="Primary.TButton", command=self.on_solve).pack(side="left")
         ttk.Button(btn_row, text="Hint", command=self.on_hint).pack(side="left", padx=(8, 0))
         ttk.Button(btn_row, text="Generate Similar", command=self.on_generate_similar).pack(side="left", padx=(8, 0))
-        ttk.Button(btn_row, text="Paste from Clipboard", command=self.on_paste_clipboard).pack(side="left", padx=(8, 0))
-        ttk.Button(btn_row, text="Import from Image (OCR)", command=self.on_import_image).pack(side="left", padx=(8, 0))
+        ttk.Button(btn_row, text="Paste", command=self.on_paste_clipboard).pack(side="left", padx=(8, 0))
+        ttk.Button(btn_row, text="Import OCR", command=self.on_import_image).pack(side="left", padx=(8, 0))
 
-        middle = ttk.Panedwindow(root, orient="horizontal")
-        middle.pack(fill="both", expand=True, pady=(10, 0))
+        body = ttk.Panedwindow(root, orient="horizontal")
+        body.pack(fill="both", expand=True, pady=(12, 0))
 
-        left = ttk.Frame(middle, padding=6)
-        right = ttk.Frame(middle, padding=6)
-        middle.add(left, weight=3)
-        middle.add(right, weight=2)
+        left = ttk.Frame(body, style="App.TFrame", padding=(0, 0, 8, 0))
+        right = ttk.Frame(body, style="App.TFrame", padding=(8, 0, 0, 0))
+        body.add(left, weight=3)
+        body.add(right, weight=2)
 
-        result_frame = ttk.LabelFrame(left, text="Solution", padding=10)
-        result_frame.pack(fill="both", expand=True)
+        result_card = ttk.Frame(left, style="Card.TFrame", padding=12)
+        result_card.pack(fill="both", expand=True)
+        ttk.Label(result_card, text="Solution Panel", style="Section.TLabel").pack(anchor="w")
+        ttk.Label(result_card, text="Steps, answers, hints, and test summaries appear here.", style="Muted.TLabel").pack(anchor="w", pady=(2, 8))
 
-        self.result_text = tk.Text(result_frame, wrap="word", height=20)
+        self.result_text = tk.Text(result_card, wrap="word")
         self.result_text.pack(fill="both", expand=True)
+        _style_text_widget(self.result_text)
         self.result_text.configure(state="disabled")
 
-        practice_frame = ttk.LabelFrame(right, text="Practice Sets", padding=10)
-        practice_frame.pack(fill="both", expand=True)
+        practice_card = ttk.Frame(right, style="Card.TFrame", padding=12)
+        practice_card.pack(fill="both", expand=True)
+        ttk.Label(practice_card, text="Practice Sets", style="Section.TLabel").pack(anchor="w")
+        ttk.Label(practice_card, text="Store solved questions and build timed tests.", style="Muted.TLabel").pack(anchor="w", pady=(2, 8))
 
-        ttk.Label(practice_frame, text="Select set:").pack(anchor="w")
-        self.set_choice = ttk.Combobox(practice_frame, state="readonly")
+        ttk.Label(practice_card, text="Selected set", style="Muted.TLabel").pack(anchor="w")
+        self.set_choice = ttk.Combobox(practice_card, state="readonly")
         self.set_choice.pack(fill="x", pady=(4, 8))
 
-        set_btns = ttk.Frame(practice_frame)
+        set_btns = ttk.Frame(practice_card, style="Card.TFrame")
         set_btns.pack(fill="x")
         ttk.Button(set_btns, text="New Set", command=self.on_new_set).pack(side="left")
         ttk.Button(set_btns, text="Refresh", command=self._refresh_sets_dropdown).pack(side="left", padx=(8, 0))
 
-        ttk.Button(practice_frame, text="Save Current Solution to Set", command=self.on_save_to_set).pack(fill="x", pady=(12, 6))
-        ttk.Button(practice_frame, text="Export Set", command=self.on_export_set).pack(fill="x")
-        ttk.Button(practice_frame, text="Start Timed Test", command=self.on_start_timed_test).pack(fill="x", pady=(6, 0))
+        ttk.Button(practice_card, text="Save Current Solution", command=self.on_save_to_set).pack(fill="x", pady=(10, 6))
+        ttk.Button(practice_card, text="Export Set", command=self.on_export_set).pack(fill="x", pady=(0, 6))
+        ttk.Button(practice_card, text="Start Timed Test", style="Primary.TButton", command=self.on_start_timed_test).pack(fill="x")
 
-        ttk.Label(practice_frame, text="Generated practice problems:").pack(anchor="w", pady=(12, 4))
-        self.practice_list = tk.Listbox(practice_frame, height=10)
+        ttk.Label(practice_card, text="Generated practice problems", style="Muted.TLabel").pack(anchor="w", pady=(12, 6))
+        self.practice_list = tk.Listbox(practice_card, height=10)
         self.practice_list.pack(fill="both", expand=True)
+        _style_listbox(self.practice_list)
 
     def _write_result(self, content: str) -> None:
         self.result_text.configure(state="normal")
@@ -264,8 +344,7 @@ class MathTutorApp(tk.Tk):
         return self.problem_entry.get("1.0", tk.END).strip()
 
     def _get_normalized_problem(self) -> str:
-        raw = self._get_problem_input()
-        return normalize_problem_text(raw)
+        return normalize_problem_text(self._get_problem_input())
 
     def _set_problem_input(self, text: str) -> None:
         self.problem_entry.delete("1.0", tk.END)
@@ -327,9 +406,8 @@ class MathTutorApp(tk.Tk):
             return
 
         self._set_problem_input(problem)
-        items = generate_similar_problems(problem, count=5)
         self.practice_list.delete(0, tk.END)
-        for item in items:
+        for item in generate_similar_problems(problem, count=5):
             self.practice_list.insert(tk.END, item)
 
     def on_import_image(self) -> None:
@@ -423,9 +501,7 @@ class MathTutorApp(tk.Tk):
         if not output_path:
             return
 
-        lines = []
-        lines.append(f"Practice Set: {self.db.get_practice_set_name(set_id)}")
-        lines.append("=" * 60)
+        lines = [f"Practice Set: {self.db.get_practice_set_name(set_id)}", "=" * 60]
         for i, row in enumerate(rows, start=1):
             lines.append(f"{i}. Problem: {row.problem_text}")
             lines.append(f"   Type: {row.problem_type}")

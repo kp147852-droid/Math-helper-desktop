@@ -29,7 +29,15 @@ pip install -r requirements.txt
 python3 -m app.main
 ```
 
+Base install (`requirements.txt`) runs the app without OCR support.
+
 ## OCR Setup (Required for Image Import)
+Install OCR Python deps:
+
+```bash
+pip install -r requirements-ocr.txt
+```
+
 Install the Tesseract binary on your machine:
 
 - macOS (Homebrew): `brew install tesseract`

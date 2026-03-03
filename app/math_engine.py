@@ -40,6 +40,9 @@ def _norm_term(text: str | None) -> int:
 
 def _to_sympy_input(problem: str) -> str:
     parsed = problem.replace("×", "*").replace("÷", "/").replace("−", "-")
+    parsed = parsed.replace("²", "^2").replace("³", "^3")
+    parsed = re.sub(r"\b([a-zA-Z0-9_()]+)\s+squared\b", r"\1^2", parsed, flags=re.IGNORECASE)
+    parsed = re.sub(r"\b([a-zA-Z0-9_()]+)\s+cubed\b", r"\1^3", parsed, flags=re.IGNORECASE)
     parsed = parsed.replace("½", "(1/2)").replace("¼", "(1/4)").replace("¾", "(3/4)")
     parsed = parsed.replace("⅓", "(1/3)").replace("⅔", "(2/3)")
     parsed = re.sub(r"\bln\(", "log(", parsed)

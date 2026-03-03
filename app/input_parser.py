@@ -65,6 +65,9 @@ def _normalize_symbols(text: str) -> str:
         .replace("＝", "=")
         .replace("X", "x")
     )
+    updated = updated.replace("²", "^2").replace("³", "^3")
+    updated = re.sub(r"\b([a-zA-Z0-9_()]+)\s+squared\b", r"\1^2", updated, flags=re.IGNORECASE)
+    updated = re.sub(r"\b([a-zA-Z0-9_()]+)\s+cubed\b", r"\1^3", updated, flags=re.IGNORECASE)
     for symbol, fraction in _UNICODE_FRACTIONS.items():
         # mixed form like 3½ -> (3+1/2)
         updated = re.sub(rf"(\d){re.escape(symbol)}", rf"(\1+{fraction})", updated)
@@ -79,6 +82,8 @@ def _normalize_implicit_multiplication(text: str) -> str:
     updated = re.sub(r"(?<=\d)(?=[a-zA-Z(])", "*", text)
     updated = re.sub(r"(?<=\))(?=[a-zA-Z0-9])", "*", updated)
     updated = re.sub(r"(?<=x)(?=\()", "*", updated)
+    # x2 -> x^2, y3 -> y^3
+    updated = re.sub(r"(?<=[a-zA-Z])(\d+)", r"^\1", updated)
     return updated
 
 

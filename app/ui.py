@@ -3,11 +3,181 @@ from __future__ import annotations
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
+from typing import Callable
 
-from .db import Database
+from sympy import SympifyError, simplify, sympify
+
+from .db import Database, SavedSolution
 from .input_parser import normalize_problem_text
 from .math_engine import SolveResult, generate_similar_problems, solve_problem
 from .ocr import extract_problem_from_image
+
+
+def _normalize_answer_tokens(answer: str) -> list[str]:
+    cleaned = answer.strip().lower().replace(";", ",")
+    if not cleaned:
+        return []
+    parts = [p.strip() for p in cleaned.split(",") if p.strip()]
+    normalized: list[str] = []
+    for part in parts:
+        if "=" in part:
+            _, rhs = part.split("=", maxsplit=1)
+            part = rhs.strip()
+        normalized.append(part.replace("^", "**"))
+    return normalized
+
+
+def _answers_match(user_answer: str, expected_answer: str) -> bool:
+    user_tokens = _normalize_answer_tokens(user_answer)
+    expected_tokens = _normalize_answer_tokens(expected_answer)
+    if not user_tokens:
+        return False
+
+    if sorted(user_tokens) == sorted(expected_tokens):
+        return True
+
+    try:
+        user_expr = sorted(str(simplify(sympify(token))) for token in user_tokens)
+        expected_expr = sorted(str(simplify(sympify(token))) for token in expected_tokens)
+        return user_expr == expected_expr
+    except (SympifyError, TypeError, ValueError):
+        return False
+
+
+class PracticeTestWindow(tk.Toplevel):
+    def __init__(
+        self,
+        parent: tk.Tk,
+        set_name: str,
+        questions: list[SavedSolution],
+        duration_minutes: int,
+        on_finish: Callable[[str], None],
+    ) -> None:
+        super().__init__(parent)
+        self.title(f"Timed Test - {set_name}")
+        self.geometry("780x420")
+        self.resizable(True, True)
+        self.transient(parent)
+        self.grab_set()
+
+        self.set_name = set_name
+        self.questions = questions
+        self.duration_seconds = max(60, duration_minutes * 60)
+        self.remaining_seconds = self.duration_seconds
+        self.on_finish = on_finish
+
+        self.current_index = 0
+        self.correct_count = 0
+        self.answered_count = 0
+        self.results: list[str] = []
+        self.finished = False
+
+        self.timer_after_id: str | None = None
+
+        self._build_ui()
+        self._render_question()
+        self._tick_timer()
+        self.protocol("WM_DELETE_WINDOW", self._finish_test)
+
+    def _build_ui(self) -> None:
+        root = ttk.Frame(self, padding=12)
+        root.pack(fill="both", expand=True)
+
+        top = ttk.Frame(root)
+        top.pack(fill="x")
+        self.progress_label = ttk.Label(top, text="")
+        self.progress_label.pack(side="left")
+        self.timer_label = ttk.Label(top, text="")
+        self.timer_label.pack(side="right")
+
+        question_box = ttk.LabelFrame(root, text="Question", padding=10)
+        question_box.pack(fill="both", expand=True, pady=(8, 8))
+        self.question_text = tk.Text(question_box, height=8, wrap="word")
+        self.question_text.pack(fill="both", expand=True)
+        self.question_text.configure(state="disabled")
+
+        answer_row = ttk.Frame(root)
+        answer_row.pack(fill="x", pady=(2, 8))
+        ttk.Label(answer_row, text="Your answer:").pack(side="left")
+        self.answer_entry = ttk.Entry(answer_row)
+        self.answer_entry.pack(side="left", fill="x", expand=True, padx=(8, 0))
+
+        buttons = ttk.Frame(root)
+        buttons.pack(fill="x")
+        ttk.Button(buttons, text="Submit Answer", command=self._submit_answer).pack(side="left")
+        ttk.Button(buttons, text="Skip", command=self._skip_question).pack(side="left", padx=(8, 0))
+        ttk.Button(buttons, text="Finish Test", command=self._finish_test).pack(side="right")
+
+    def _write_question(self, text: str) -> None:
+        self.question_text.configure(state="normal")
+        self.question_text.delete("1.0", tk.END)
+        self.question_text.insert(tk.END, text)
+        self.question_text.configure(state="disabled")
+
+    def _render_question(self) -> None:
+        if self.current_index >= len(self.questions):
+            self._finish_test()
+            return
+
+        q = self.questions[self.current_index]
+        self.progress_label.configure(text=f"Question {self.current_index + 1}/{len(self.questions)}")
+        self.answer_entry.delete(0, tk.END)
+        self._write_question(f"Solve:\n\n{q.problem_text}\n\nType your final answer and click Submit Answer.")
+        self.answer_entry.focus_set()
+
+    def _tick_timer(self) -> None:
+        mins, secs = divmod(self.remaining_seconds, 60)
+        self.timer_label.configure(text=f"Time left: {mins:02d}:{secs:02d}")
+        if self.remaining_seconds <= 0:
+            messagebox.showinfo("Time up", "Time is up. Finishing test.")
+            self._finish_test()
+            return
+        self.remaining_seconds -= 1
+        self.timer_after_id = self.after(1000, self._tick_timer)
+
+    def _record_and_next(self, user_answer: str) -> None:
+        q = self.questions[self.current_index]
+        is_correct = _answers_match(user_answer, q.final_answer)
+        self.answered_count += 1
+        if is_correct:
+            self.correct_count += 1
+            self.results.append(f"Q{self.current_index + 1}: Correct")
+        else:
+            self.results.append(
+                f"Q{self.current_index + 1}: Incorrect | Your answer: {user_answer or '[blank]'} | Expected: {q.final_answer}"
+            )
+        self.current_index += 1
+        self._render_question()
+
+    def _submit_answer(self) -> None:
+        answer = self.answer_entry.get().strip()
+        self._record_and_next(answer)
+
+    def _skip_question(self) -> None:
+        self._record_and_next("")
+
+    def _finish_test(self) -> None:
+        if self.finished:
+            return
+        self.finished = True
+
+        if self.timer_after_id:
+            self.after_cancel(self.timer_after_id)
+            self.timer_after_id = None
+
+        total = len(self.questions)
+        score_pct = (self.correct_count / total * 100.0) if total else 0.0
+        lines = [
+            f"Practice Test: {self.set_name}",
+            f"Score: {self.correct_count}/{total} ({score_pct:.1f}%)",
+            f"Answered: {self.answered_count}/{total}",
+            "",
+            "Results:",
+            *self.results,
+        ]
+        summary = "\n".join(lines)
+        self.on_finish(summary)
+        self.destroy()
 
 
 class MathTutorApp(tk.Tk):
@@ -75,6 +245,7 @@ class MathTutorApp(tk.Tk):
 
         ttk.Button(practice_frame, text="Save Current Solution to Set", command=self.on_save_to_set).pack(fill="x", pady=(12, 6))
         ttk.Button(practice_frame, text="Export Set", command=self.on_export_set).pack(fill="x")
+        ttk.Button(practice_frame, text="Start Timed Test", command=self.on_start_timed_test).pack(fill="x", pady=(6, 0))
 
         ttk.Label(practice_frame, text="Generated practice problems:").pack(anchor="w", pady=(12, 4))
         self.practice_list = tk.Listbox(practice_frame, height=10)
@@ -260,6 +431,41 @@ class MathTutorApp(tk.Tk):
 
         Path(output_path).write_text("\n".join(lines), encoding="utf-8")
         messagebox.showinfo("Exported", f"Exported to {output_path}")
+
+    def on_start_timed_test(self) -> None:
+        set_id = self._selected_set_id()
+        if not set_id:
+            messagebox.showwarning("No set", "Create or select a practice set first.")
+            return
+
+        questions = self.db.get_set_export_rows(set_id)
+        if not questions:
+            messagebox.showwarning("Empty set", "No saved solutions in this set yet.")
+            return
+
+        duration = simpledialog.askinteger(
+            "Timed Test",
+            "Enter test duration in minutes:",
+            minvalue=1,
+            maxvalue=180,
+            initialvalue=max(5, len(questions) * 2),
+        )
+        if not duration:
+            return
+
+        set_name = self.db.get_practice_set_name(set_id)
+
+        def handle_finish(summary: str) -> None:
+            self._write_result(summary)
+            messagebox.showinfo("Test Complete", "Timed test completed. Score is shown in the Solution panel.")
+
+        PracticeTestWindow(
+            parent=self,
+            set_name=set_name,
+            questions=questions,
+            duration_minutes=duration,
+            on_finish=handle_finish,
+        )
 
     def on_close(self) -> None:
         self.db.close()

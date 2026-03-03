@@ -8,6 +8,7 @@ A local Python desktop app for math help that can:
 - import math problems from images (OCR),
 - clean pasted homework formatting automatically (like `1) Solve: 2x + 3 = 11`),
 - save solved problems into SQLite-backed practice sets,
+- run timed practice tests from saved sets with score reporting,
 - export practice sets to text files for mock tests.
 
 ## Tech

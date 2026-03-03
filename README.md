@@ -112,3 +112,10 @@ Add these topics in GitHub UI for discoverability:
 
 ## License
 MIT — see [LICENSE](LICENSE)
+
+## Employer Quick Links
+- Project brief: `docs/PROJECT_BRIEF.md`
+- Resume bullets: `docs/RESUME_BULLETS.md`
+- Security policy: `SECURITY.md`
+- Contribution guide: `CONTRIBUTING.md`
+- Code of conduct: `CODE_OF_CONDUCT.md`

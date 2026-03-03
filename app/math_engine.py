@@ -39,8 +39,13 @@ def _norm_term(text: str | None) -> int:
 
 
 def _to_sympy_input(problem: str) -> str:
-    parsed = problem.replace("^", "**").replace("×", "*").replace("÷", "/").replace("−", "-")
+    parsed = problem.replace("×", "*").replace("÷", "/").replace("−", "-")
+    parsed = parsed.replace("½", "(1/2)").replace("¼", "(1/4)").replace("¾", "(3/4)")
+    parsed = parsed.replace("⅓", "(1/3)").replace("⅔", "(2/3)")
     parsed = re.sub(r"\bln\(", "log(", parsed)
+    # Common shorthand from pasted homework/OCR: x2 -> x^2
+    parsed = re.sub(r"([a-zA-Z])(\d+)", r"\1^\2", parsed)
+    parsed = parsed.replace("^", "**")
     return parsed
 
 
@@ -168,6 +173,41 @@ def _solve_geometry(problem: str) -> SolveResult | None:
         )
 
     return None
+
+
+def _solve_if_then_word_problem(problem: str) -> SolveResult | None:
+    match = re.match(r"^\s*if\s+(.+?),\s*then\s+(.+?)\s*=?\s*$", problem, flags=re.IGNORECASE)
+    if not match:
+        return None
+
+    equation_text = match.group(1).strip()
+    expression_text = match.group(2).strip()
+    if "=" not in equation_text:
+        return None
+
+    x = Symbol("x", real=True)
+    left, right = _to_sympy_input(equation_text).split("=", maxsplit=1)
+    eq = Eq(sympify(left), sympify(right))
+    solutions = solve(eq, x)
+    if not solutions:
+        raise ValueError("Could not solve the first equation in the word problem.")
+
+    expr = sympify(_to_sympy_input(expression_text))
+    evaluated = [simplify(expr.subs(x, sol)) for sol in solutions]
+    answer = str(evaluated[0]) if len(evaluated) == 1 else str(evaluated)
+    steps = [
+        f"From the prompt, first solve: {eq}",
+        f"Solution(s) for x: {solutions}",
+        f"Now evaluate expression: {expr}",
+        f"Substitute x into expression -> {evaluated}",
+    ]
+    return SolveResult(
+        problem_text=problem,
+        problem_type="word_problem_substitution",
+        steps=steps,
+        final_answer=answer,
+        hint="For 'If ... then ...' problems, solve the equation first, then substitute into the requested expression.",
+    )
 
 
 def _solve_calculus(problem: str) -> SolveResult | None:
@@ -479,6 +519,8 @@ def _analyze_function(problem: str) -> SolveResult | None:
 
 def classify_problem(problem: str) -> str:
     lower = problem.lower()
+    if lower.strip().startswith("if ") and " then " in lower:
+        return "word_problem_substitution"
     if lower.startswith("derivative ") or lower.startswith("integrate ") or lower.startswith("limit "):
         return "calculus"
     if lower.startswith("det ") or lower.startswith("determinant ") or lower.startswith("inverse ") or lower.startswith("solve system "):
@@ -506,6 +548,7 @@ def solve_problem(problem: str) -> SolveResult:
         raise ValueError("Problem is empty.")
 
     for specialized_solver in (
+        _solve_if_then_word_problem,
         _solve_calculus,
         _solve_linear_algebra,
         _solve_geometry,
@@ -557,6 +600,8 @@ def solve_problem(problem: str) -> SolveResult:
         hint = "Set up notation clearly first (derivative, integral, or limit) before applying rules."
     elif ptype == "linear_algebra":
         hint = "Track each row/operation carefully; small sign errors cascade in matrix work."
+    elif ptype == "word_problem_substitution":
+        hint = "Split the problem into two tasks: solve for variable, then evaluate target expression."
 
     return SolveResult(
         problem_text=problem,
@@ -661,6 +706,16 @@ def generate_similar_problems(problem: str, count: int = 5) -> List[str]:
         ]
         for _ in range(count):
             generated.append(random.choice(la_bank))
+        return generated
+
+    if ptype == "word_problem_substitution":
+        word_bank = [
+            "If 2*x - 5 = 5*x + 4, then x^2 + x =",
+            "If 3*x + 7 = 19, then 2*x^2 - x =",
+            "If x/2 + 4 = 9, then x^2 - 3*x =",
+        ]
+        for _ in range(count):
+            generated.append(random.choice(word_bank))
         return generated
 
     for _ in range(count):

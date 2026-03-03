@@ -8,6 +8,27 @@ _PREFIX_PATTERNS = [
     re.compile(r"^\s*(solve|simplify|evaluate|compute|find)\s*[:.-]?\s*", re.IGNORECASE),
 ]
 
+_UNICODE_FRACTIONS = {
+    "½": "1/2",
+    "⅓": "1/3",
+    "⅔": "2/3",
+    "¼": "1/4",
+    "¾": "3/4",
+    "⅕": "1/5",
+    "⅖": "2/5",
+    "⅗": "3/5",
+    "⅘": "4/5",
+    "⅙": "1/6",
+    "⅚": "5/6",
+    "⅐": "1/7",
+    "⅛": "1/8",
+    "⅜": "3/8",
+    "⅝": "5/8",
+    "⅞": "7/8",
+    "⅑": "1/9",
+    "⅒": "1/10",
+}
+
 
 def _line_score(line: str) -> int:
     score = 0
@@ -35,7 +56,7 @@ def _strip_prefixes(text: str) -> str:
 
 
 def _normalize_symbols(text: str) -> str:
-    return (
+    updated = (
         text.replace("×", "*")
         .replace("÷", "/")
         .replace("−", "-")
@@ -44,6 +65,13 @@ def _normalize_symbols(text: str) -> str:
         .replace("＝", "=")
         .replace("X", "x")
     )
+    for symbol, fraction in _UNICODE_FRACTIONS.items():
+        # mixed form like 3½ -> (3+1/2)
+        updated = re.sub(rf"(\d){re.escape(symbol)}", rf"(\1+{fraction})", updated)
+        updated = updated.replace(symbol, f"({fraction})")
+    # mixed form like 3 1/2 -> (3+1/2)
+    updated = re.sub(r"(\d+)\s+(\d+)\s*/\s*(\d+)", r"(\1+\2/\3)", updated)
+    return updated
 
 
 def _normalize_implicit_multiplication(text: str) -> str:

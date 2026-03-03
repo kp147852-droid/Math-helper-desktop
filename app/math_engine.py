@@ -1,9 +1,10 @@
 import random
 import re
+from ast import literal_eval
 from dataclasses import dataclass
 from typing import List
 
-from sympy import Eq, Rational, S, Symbol, SympifyError, diff, simplify, solve, sqrt, sympify
+from sympy import Eq, Matrix, Rational, S, Symbol, SympifyError, diff, integrate, limit, simplify, solve, sqrt, sympify
 from sympy.calculus.util import continuous_domain
 
 
@@ -164,6 +165,146 @@ def _solve_geometry(problem: str) -> SolveResult | None:
             ],
             final_answer=f"Hypotenuse c = {c}",
             hint="In right triangles, the longest side is opposite the right angle.",
+        )
+
+    return None
+
+
+def _solve_calculus(problem: str) -> SolveResult | None:
+    lower = problem.lower().strip()
+    x = Symbol("x", real=True)
+
+    if lower.startswith("derivative "):
+        expr_text = problem[len("derivative ") :].strip()
+        expr = sympify(_to_sympy_input(expr_text))
+        deriv = simplify(diff(expr, x))
+        return SolveResult(
+            problem_text=problem,
+            problem_type="calculus_derivative",
+            steps=[
+                f"Function: f(x) = {expr}",
+                "Differentiate with respect to x",
+                f"f'(x) = {deriv}",
+            ],
+            final_answer=f"{deriv}",
+            hint="Use power, product, quotient, and chain rules as needed.",
+        )
+
+    if lower.startswith("integrate "):
+        expr_text = problem[len("integrate ") :].strip()
+        expr = sympify(_to_sympy_input(expr_text))
+        antiderivative = simplify(integrate(expr, x))
+        return SolveResult(
+            problem_text=problem,
+            problem_type="calculus_integral",
+            steps=[
+                f"Integrand: {expr}",
+                "Find antiderivative with respect to x",
+                f"Integral = {antiderivative} + C",
+            ],
+            final_answer=f"{antiderivative} + C",
+            hint="Check by differentiating your result to recover the original integrand.",
+        )
+
+    if lower.startswith("limit "):
+        # Format: limit x->a expression
+        match = re.match(r"^limit\s+x->\s*([^\s]+)\s+(.+)$", lower)
+        if not match:
+            raise ValueError("Use limit format like: limit x->2 (x^2-4)/(x-2)")
+        point_text = match.group(1)
+        expr_text = problem.split(None, 2)[2] if len(problem.split(None, 2)) == 3 else ""
+        expr = sympify(_to_sympy_input(expr_text))
+        point = sympify(_to_sympy_input(point_text))
+        lim_val = simplify(limit(expr, x, point))
+        return SolveResult(
+            problem_text=problem,
+            problem_type="calculus_limit",
+            steps=[
+                f"Expression: {expr}",
+                f"Take x -> {point}",
+                f"Limit value: {lim_val}",
+            ],
+            final_answer=str(lim_val),
+            hint="If direct substitution fails, try factoring or rationalizing first.",
+        )
+
+    return None
+
+
+def _parse_matrix_text(text: str) -> Matrix:
+    parsed = literal_eval(text)
+    return Matrix(parsed)
+
+
+def _solve_linear_algebra(problem: str) -> SolveResult | None:
+    lower = problem.lower().strip()
+    if lower.startswith("det ") or lower.startswith("determinant "):
+        matrix_text = problem.split(None, 1)[1].strip()
+        mat = _parse_matrix_text(matrix_text)
+        det_val = simplify(mat.det())
+        return SolveResult(
+            problem_text=problem,
+            problem_type="linear_algebra",
+            steps=[
+                f"Matrix A = {mat}",
+                "Compute determinant det(A)",
+                f"det(A) = {det_val}",
+            ],
+            final_answer=f"det(A) = {det_val}",
+            hint="For 2x2 matrices [[a,b],[c,d]], det = ad - bc.",
+        )
+
+    if lower.startswith("inverse "):
+        matrix_text = problem.split(None, 1)[1].strip()
+        mat = _parse_matrix_text(matrix_text)
+        det_val = simplify(mat.det())
+        if det_val == 0:
+            return SolveResult(
+                problem_text=problem,
+                problem_type="linear_algebra",
+                steps=[f"Matrix A = {mat}", "det(A) = 0, so A is singular and not invertible."],
+                final_answer="No inverse (singular matrix)",
+                hint="A matrix must have nonzero determinant to have an inverse.",
+            )
+        inv = mat.inv()
+        return SolveResult(
+            problem_text=problem,
+            problem_type="linear_algebra",
+            steps=[
+                f"Matrix A = {mat}",
+                f"det(A) = {det_val} (nonzero, so inverse exists)",
+                f"A^(-1) = {inv}",
+            ],
+            final_answer=f"A^(-1) = {inv}",
+            hint="For larger matrices, row-reduction to [I|A^-1] is the standard method.",
+        )
+
+    if lower.startswith("solve system "):
+        # Format: solve system eq1; eq2; ...
+        eq_text = problem[len("solve system ") :].strip()
+        parts = [p.strip() for p in eq_text.split(";") if p.strip()]
+        if len(parts) < 2:
+            raise ValueError("Use solve system format like: solve system 2*x+y=5; x-y=1")
+        x, y, z = Symbol("x"), Symbol("y"), Symbol("z")
+        equations = []
+        for part in parts:
+            if "=" not in part:
+                raise ValueError("Each equation in system must include '='.")
+            left, right = part.split("=", maxsplit=1)
+            equations.append(Eq(sympify(_to_sympy_input(left)), sympify(_to_sympy_input(right))))
+        sol = solve(equations, (x, y, z), dict=True)
+        if not sol:
+            sol = solve(equations, (x, y), dict=True)
+        return SolveResult(
+            problem_text=problem,
+            problem_type="linear_algebra",
+            steps=[
+                f"System: {equations}",
+                "Solve simultaneously for unknowns",
+                f"Solution set: {sol}",
+            ],
+            final_answer=str(sol),
+            hint="You can solve systems by substitution, elimination, or matrix row-reduction.",
         )
 
     return None
@@ -338,6 +479,10 @@ def _analyze_function(problem: str) -> SolveResult | None:
 
 def classify_problem(problem: str) -> str:
     lower = problem.lower()
+    if lower.startswith("derivative ") or lower.startswith("integrate ") or lower.startswith("limit "):
+        return "calculus"
+    if lower.startswith("det ") or lower.startswith("determinant ") or lower.startswith("inverse ") or lower.startswith("solve system "):
+        return "linear_algebra"
     if any(token in lower for token in ("area", "perimeter", "circumference", "pythagorean", "hypotenuse")):
         return "geometry"
     if "f(x)=" in lower or lower.strip().startswith("analyze"):
@@ -361,6 +506,8 @@ def solve_problem(problem: str) -> SolveResult:
         raise ValueError("Problem is empty.")
 
     for specialized_solver in (
+        _solve_calculus,
+        _solve_linear_algebra,
         _solve_geometry,
         _analyze_function,
         _solve_linear_teaching,
@@ -406,6 +553,10 @@ def solve_problem(problem: str) -> SolveResult:
         hint = "Try factoring first; if not possible, use the quadratic formula."
     elif ptype == "geometry":
         hint = "Write the known formula first, substitute values, then compute carefully with units."
+    elif ptype == "calculus":
+        hint = "Set up notation clearly first (derivative, integral, or limit) before applying rules."
+    elif ptype == "linear_algebra":
+        hint = "Track each row/operation carefully; small sign errors cascade in matrix work."
 
     return SolveResult(
         problem_text=problem,
@@ -485,6 +636,31 @@ def generate_similar_problems(problem: str, count: int = 5) -> List[str]:
         ]
         for _ in range(count):
             generated.append(random.choice(geometry_bank))
+        return generated
+
+    if ptype == "calculus":
+        calculus_bank = [
+            "derivative x^3 - 4*x + 7",
+            "derivative sin(x)*x^2",
+            "integrate 3*x^2 - 5*x + 2",
+            "integrate exp(x)",
+            "limit x->2 (x^2-4)/(x-2)",
+            "limit x->0 sin(x)/x",
+        ]
+        for _ in range(count):
+            generated.append(random.choice(calculus_bank))
+        return generated
+
+    if ptype == "linear_algebra":
+        la_bank = [
+            "det [[1,2],[3,4]]",
+            "inverse [[2,1],[5,3]]",
+            "solve system 2*x+y=5; x-y=1",
+            "solve system x+2*y=7; 3*x-y=5",
+            "det [[2,0,1],[1,3,4],[0,2,5]]",
+        ]
+        for _ in range(count):
+            generated.append(random.choice(la_bank))
         return generated
 
     for _ in range(count):

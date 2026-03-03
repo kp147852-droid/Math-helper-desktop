@@ -2,6 +2,7 @@
 
 A local Python desktop app for math help that can:
 - solve algebra, precalculus, trigonometry, and core geometry problem types,
+- solve college-level calculus and linear algebra command-style prompts,
 - solve typed math problems,
 - show step-by-step output,
 - provide a hint mode,
@@ -57,6 +58,14 @@ Then restart the app and use `Import from Image (OCR)`.
 - `2*x + 3 = 11`
 - `x^2 - 5*x + 6 = 0`
 - `(3*x + 2) - 4`
+- `derivative x^3 - 4*x + 7`
+- `integrate sin(x)`
+- `limit x->2 (x^2-4)/(x-2)`
+- `det [[1,2],[3,4]]`
+- `inverse [[2,1],[5,3]]`
+- `solve system 2*x+y=5; x-y=1`
+- `area circle r=5`
+- `analyze (x+1)/(x-2)`
 
 ## Notes
 - Use `*` for multiplication (`2*x` not `2x`).

@@ -10,6 +10,7 @@ A local Python desktop app for math help that can:
 - save solved problems into SQLite-backed practice sets,
 - run timed practice tests from saved sets with score reporting,
 - generate a new "missed only" review set automatically after timed tests,
+- switch between modern dark and light themes from the header,
 - export practice sets to text files for mock tests.
 
 ## Tech

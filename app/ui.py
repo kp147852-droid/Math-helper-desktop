@@ -14,14 +14,36 @@ from .math_engine import SolveResult, generate_similar_problems, solve_problem
 from .ocr import extract_problem_from_image
 
 
-BG = "#0b1220"
-CARD = "#111b2e"
-CARD_ALT = "#13223b"
-TEXT = "#e5e7eb"
-MUTED = "#9aa8bf"
-ACCENT = "#22d3ee"
-ACCENT_ALT = "#38bdf8"
-BORDER = "#1f2a44"
+THEMES: dict[str, dict[str, str]] = {
+    "Dark": {
+        "bg": "#0b1220",
+        "card": "#111b2e",
+        "card_alt": "#13223b",
+        "text": "#e5e7eb",
+        "muted": "#9aa8bf",
+        "accent": "#22d3ee",
+        "accent_alt": "#38bdf8",
+        "border": "#1f2a44",
+        "button": "#1c2a45",
+        "button_active": "#243557",
+        "selection": "#0ea5b7",
+        "selection_text": "#03111f",
+    },
+    "Light": {
+        "bg": "#f4f7fb",
+        "card": "#ffffff",
+        "card_alt": "#eef2f7",
+        "text": "#0f172a",
+        "muted": "#475569",
+        "accent": "#0ea5e9",
+        "accent_alt": "#0284c7",
+        "border": "#cbd5e1",
+        "button": "#dbeafe",
+        "button_active": "#bfdbfe",
+        "selection": "#93c5fd",
+        "selection_text": "#0f172a",
+    },
+}
 
 
 def _normalize_answer_tokens(answer: str) -> list[str]:
@@ -55,12 +77,14 @@ def _answers_match(user_answer: str, expected_answer: str) -> bool:
         return False
 
 
-def _style_text_widget(widget: tk.Text, background: str = CARD_ALT) -> None:
+def _style_text_widget(widget: tk.Text, palette: dict[str, str], background: str | None = None) -> None:
+    bg_color = background or palette["card_alt"]
     widget.configure(
-        bg=background,
-        fg=TEXT,
-        insertbackground=ACCENT,
-        selectbackground="#0ea5b7",
+        bg=bg_color,
+        fg=palette["text"],
+        insertbackground=palette["accent"],
+        selectbackground=palette["selection"],
+        selectforeground=palette["selection_text"],
         relief="flat",
         bd=0,
         padx=10,
@@ -69,16 +93,16 @@ def _style_text_widget(widget: tk.Text, background: str = CARD_ALT) -> None:
     )
 
 
-def _style_listbox(widget: tk.Listbox) -> None:
+def _style_listbox(widget: tk.Listbox, palette: dict[str, str]) -> None:
     widget.configure(
-        bg=CARD_ALT,
-        fg=TEXT,
-        selectbackground="#0ea5b7",
-        selectforeground="#03111f",
+        bg=palette["card_alt"],
+        fg=palette["text"],
+        selectbackground=palette["selection"],
+        selectforeground=palette["selection_text"],
         relief="flat",
         bd=0,
         highlightthickness=1,
-        highlightbackground=BORDER,
+        highlightbackground=palette["border"],
         font=("SF Pro Text", 11),
     )
 
@@ -91,6 +115,7 @@ class PracticeTestWindow(tk.Toplevel):
         questions: list[SavedSolution],
         duration_minutes: int,
         on_finish: Callable[[str, list[int]], None],
+        palette: dict[str, str],
     ) -> None:
         super().__init__(parent)
         self.title(f"Timed Test - {set_name}")
@@ -98,7 +123,8 @@ class PracticeTestWindow(tk.Toplevel):
         self.resizable(True, True)
         self.transient(parent)
         self.grab_set()
-        self.configure(bg=BG)
+        self.palette = palette
+        self.configure(bg=self.palette["bg"])
 
         self.set_name = set_name
         self.questions = questions
@@ -135,7 +161,7 @@ class PracticeTestWindow(tk.Toplevel):
         ttk.Label(question_box, text="Question", style="Section.TLabel").pack(anchor="w", pady=(0, 6))
         self.question_text = tk.Text(question_box, height=9, wrap="word")
         self.question_text.pack(fill="both", expand=True)
-        _style_text_widget(self.question_text)
+        _style_text_widget(self.question_text, self.palette)
         self.question_text.configure(state="disabled")
 
         answer_box = ttk.Frame(root, style="Card.TFrame", padding=12)
@@ -227,8 +253,11 @@ class MathTutorApp(tk.Tk):
         self.title("Math Helper Desktop")
         self.geometry("1180x760")
         self.minsize(980, 640)
-        self.configure(bg=BG)
-
+        self.theme_name = "Dark"
+        self.palette = THEMES[self.theme_name]
+        self.configure(bg=self.palette["bg"])
+        self.style = ttk.Style(self)
+        self.style.theme_use("clam")
         self._configure_styles()
 
         data_dir = Path(__file__).resolve().parent.parent / "data"
@@ -243,34 +272,50 @@ class MathTutorApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _configure_styles(self) -> None:
-        style = ttk.Style(self)
-        style.theme_use("clam")
+        p = self.palette
+        self.style.configure("App.TFrame", background=p["bg"])
+        self.style.configure("Card.TFrame", background=p["card"], relief="flat")
+        self.style.configure("Header.TLabel", background=p["card"], foreground=p["text"], font=("SF Pro Display", 16, "bold"))
+        self.style.configure("Title.TLabel", background=p["bg"], foreground=p["text"], font=("SF Pro Display", 20, "bold"))
+        self.style.configure("Subtitle.TLabel", background=p["bg"], foreground=p["muted"], font=("SF Pro Text", 11))
+        self.style.configure("Section.TLabel", background=p["card"], foreground=p["text"], font=("SF Pro Display", 13, "bold"))
+        self.style.configure("Muted.TLabel", background=p["card"], foreground=p["muted"], font=("SF Pro Text", 10))
+        self.style.configure("Timer.TLabel", background=p["card"], foreground=p["accent"], font=("SF Pro Display", 18, "bold"))
 
-        style.configure("App.TFrame", background=BG)
-        style.configure("Card.TFrame", background=CARD, relief="flat")
-        style.configure("Header.TLabel", background=CARD, foreground=TEXT, font=("SF Pro Display", 16, "bold"))
-        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=("SF Pro Display", 20, "bold"))
-        style.configure("Subtitle.TLabel", background=BG, foreground=MUTED, font=("SF Pro Text", 11))
-        style.configure("Section.TLabel", background=CARD, foreground=TEXT, font=("SF Pro Display", 13, "bold"))
-        style.configure("Muted.TLabel", background=CARD, foreground=MUTED, font=("SF Pro Text", 10))
-        style.configure("Timer.TLabel", background=CARD, foreground=ACCENT, font=("SF Pro Display", 18, "bold"))
+        self.style.configure("Primary.TButton", background=p["accent"], foreground=p["selection_text"], borderwidth=0, padding=(14, 8), font=("SF Pro Text", 11, "bold"))
+        self.style.map("Primary.TButton", background=[("active", p["accent_alt"])])
+        self.style.configure("TButton", background=p["button"], foreground=p["text"], borderwidth=0, padding=(12, 8), font=("SF Pro Text", 10, "bold"))
+        self.style.map("TButton", background=[("active", p["button_active"])])
 
-        style.configure("Primary.TButton", background=ACCENT, foreground="#03111f", borderwidth=0, padding=(14, 8), font=("SF Pro Text", 11, "bold"))
-        style.map("Primary.TButton", background=[("active", ACCENT_ALT)])
-        style.configure("TButton", background="#1c2a45", foreground=TEXT, borderwidth=0, padding=(12, 8), font=("SF Pro Text", 10, "bold"))
-        style.map("TButton", background=[("active", "#243557")])
-
-        style.configure("App.TEntry", fieldbackground=CARD_ALT, foreground=TEXT, bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, insertcolor=ACCENT, padding=8)
-        style.configure("TCombobox", fieldbackground=CARD_ALT, foreground=TEXT, background="#1c2a45", bordercolor=BORDER, lightcolor=BORDER, darkcolor=BORDER, arrowsize=14)
+        self.style.configure("App.TEntry", fieldbackground=p["card_alt"], foreground=p["text"], bordercolor=p["border"], lightcolor=p["border"], darkcolor=p["border"], insertcolor=p["accent"], padding=8)
+        self.style.configure("App.TCombobox", fieldbackground=p["card_alt"], foreground=p["text"], background=p["button"], bordercolor=p["border"], lightcolor=p["border"], darkcolor=p["border"], arrowsize=14)
 
     def _build_ui(self) -> None:
         root = ttk.Frame(self, style="App.TFrame", padding=16)
         root.pack(fill="both", expand=True)
+        self.root_frame = root
 
         header = ttk.Frame(root, style="App.TFrame")
         header.pack(fill="x", pady=(0, 10))
-        ttk.Label(header, text="Math Helper", style="Title.TLabel").pack(anchor="w")
-        ttk.Label(header, text="Solve, practice, and test with step-by-step math guidance", style="Subtitle.TLabel").pack(anchor="w")
+        title_col = ttk.Frame(header, style="App.TFrame")
+        title_col.pack(side="left", fill="x", expand=True)
+        ttk.Label(title_col, text="Math Helper", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(title_col, text="Solve, practice, and test with step-by-step math guidance", style="Subtitle.TLabel").pack(anchor="w")
+
+        theme_col = ttk.Frame(header, style="App.TFrame")
+        theme_col.pack(side="right")
+        ttk.Label(theme_col, text="Theme", style="Subtitle.TLabel").pack(anchor="e")
+        self.theme_var = tk.StringVar(value=self.theme_name)
+        self.theme_choice = ttk.Combobox(
+            theme_col,
+            textvariable=self.theme_var,
+            state="readonly",
+            values=["Dark", "Light"],
+            width=10,
+            style="App.TCombobox",
+        )
+        self.theme_choice.pack(anchor="e", pady=(4, 0))
+        self.theme_choice.bind("<<ComboboxSelected>>", self.on_theme_change)
 
         input_card = ttk.Frame(root, style="Card.TFrame", padding=12)
         input_card.pack(fill="x")
@@ -283,7 +328,7 @@ class MathTutorApp(tk.Tk):
 
         self.problem_entry = tk.Text(input_card, height=4, wrap="word")
         self.problem_entry.pack(fill="x")
-        _style_text_widget(self.problem_entry)
+        _style_text_widget(self.problem_entry, self.palette)
 
         btn_row = ttk.Frame(input_card, style="Card.TFrame")
         btn_row.pack(fill="x", pady=(10, 0))
@@ -317,7 +362,7 @@ class MathTutorApp(tk.Tk):
         ttk.Label(practice_card, text="Store solved questions and build timed tests.", style="Muted.TLabel").pack(anchor="w", pady=(2, 8))
 
         ttk.Label(practice_card, text="Selected set", style="Muted.TLabel").pack(anchor="w")
-        self.set_choice = ttk.Combobox(practice_card, state="readonly")
+        self.set_choice = ttk.Combobox(practice_card, state="readonly", style="App.TCombobox")
         self.set_choice.pack(fill="x", pady=(4, 8))
 
         set_btns = ttk.Frame(practice_card, style="Card.TFrame")
@@ -332,7 +377,25 @@ class MathTutorApp(tk.Tk):
         ttk.Label(practice_card, text="Generated practice problems", style="Muted.TLabel").pack(anchor="w", pady=(12, 6))
         self.practice_list = tk.Listbox(practice_card, height=10)
         self.practice_list.pack(fill="both", expand=True)
-        _style_listbox(self.practice_list)
+        _style_listbox(self.practice_list, self.palette)
+
+    def _apply_theme(self) -> None:
+        self.palette = THEMES[self.theme_name]
+        self.configure(bg=self.palette["bg"])
+        self._configure_styles()
+        if hasattr(self, "problem_entry"):
+            _style_text_widget(self.problem_entry, self.palette)
+        if hasattr(self, "result_text"):
+            _style_text_widget(self.result_text, self.palette)
+        if hasattr(self, "practice_list"):
+            _style_listbox(self.practice_list, self.palette)
+
+    def on_theme_change(self, _event: object | None = None) -> None:
+        selected = self.theme_var.get().strip()
+        if selected not in THEMES:
+            return
+        self.theme_name = selected
+        self._apply_theme()
 
     def _write_result(self, content: str) -> None:
         self.result_text.configure(state="normal")
@@ -562,6 +625,7 @@ class MathTutorApp(tk.Tk):
             questions=questions,
             duration_minutes=duration,
             on_finish=handle_finish,
+            palette=self.palette,
         )
 
     def on_close(self) -> None:

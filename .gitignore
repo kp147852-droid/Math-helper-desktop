@@ -2,4 +2,5 @@
 __pycache__/
 *.pyc
 data/math_tutor.db
+data/
 .DS_Store
